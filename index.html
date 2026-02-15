@@ -91,7 +91,7 @@ let curScale = 5.0;
 let state = { moving: 0, turning: 0 };
 let zoomState = 0;
 
-// GPS切り替え
+/* --- GPS制御 --- */
 const targetLat = 38.114742; 
 const targetLon = 140.033621;
 
@@ -109,7 +109,7 @@ btnMode.onclick = () => {
   }
 };
 
-/* --- ピンチ操作 (2本指拡大) の実装 --- */
+/* --- ピンチ操作 (2本指拡大) --- */
 let initialDist = 0;
 window.addEventListener('touchstart', e => {
   if (e.touches.length === 2) {
@@ -122,22 +122,22 @@ window.addEventListener('touchmove', e => {
     const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
     const diff = dist / initialDist;
     curScale *= diff;
-    curScale = Math.max(0.1, Math.min(curScale, 50)); // 最小0.1倍〜最大50倍
+    curScale = Math.max(0.1, Math.min(curScale, 50));
     train.object3D.scale.set(curScale, curScale, curScale);
     initialDist = dist;
   }
 }, {passive: false});
 
-/* --- メインループ (走行音・移動) --- */
+/* --- メインループ (走行音・移動・回転) --- */
 function loop() {
   requestAnimationFrame(loop);
   if (!train.object3D) return;
   const mesh = train.object3D;
 
-  // 走行音の制御
+  // 走行音の制御 (前進・後退・カーブ時に再生)
   if (state.moving !== 0) {
     if (!isRunningSoundPlaying) {
-      runAudio.play().catch(e => console.log("Audio play failed", e));
+      runAudio.play().catch(e => {});
       isRunningSoundPlaying = true;
     }
   } else {
@@ -148,14 +148,21 @@ function loop() {
     }
   }
 
+  // 回転処理
   if (state.turning !== 0) {
-    mesh.rotation.y += THREE.MathUtils.degToRad(1.5) * state.turning;
+    let turnAmt = 1.5; // 回転の鋭さ
+    // カーブ走行時は少し回転を緩やかにする設定も可能
+    mesh.rotation.y += THREE.MathUtils.degToRad(turnAmt) * state.turning;
   }
+
+  // 移動処理
   if (state.moving !== 0) {
     const forward = new THREE.Vector3(0, 0, 1);
     forward.applyQuaternion(mesh.quaternion);
     mesh.position.addScaledVector(forward, state.moving * 0.15);
   }
+
+  // ボタンによるズーム処理
   if (zoomState !== 0) {
     curScale += zoomState * 0.05;
     curScale = Math.max(0.1, curScale);
@@ -164,18 +171,33 @@ function loop() {
 }
 loop();
 
-/* --- ボタンイベント --- */
+/* --- 操作ボタンのイベント登録 --- */
 function setAction(id, moveVal, turnVal) {
   const btn = document.getElementById(id);
+  if(!btn) return;
   const start = (e) => { if(e.cancelable) e.preventDefault(); state.moving = moveVal; state.turning = turnVal; };
   const end = (e) => { if(e.cancelable) e.preventDefault(); state.moving = 0; state.turning = 0; };
+  
   btn.addEventListener('touchstart', start, {passive:false});
   btn.addEventListener('touchend', end, {passive:false});
+  btn.addEventListener('mousedown', start);
+  btn.addEventListener('mouseup', end);
+  btn.addEventListener('mouseleave', end);
 }
-setAction('btn-fwd', 1, 0); setAction('btn-back', -1, 0);
-setAction('btn-turn-left', 0, 1); setAction('btn-turn-right', 0, -1);
+
+// 全ボタンに動作を割り当て
+setAction('btn-fwd', 1, 0);               // 前進
+setAction('btn-back', -1, 0);             // 後退
+setAction('btn-turn-left', 0, 1);         // 左旋回(その場)
+setAction('btn-turn-right', 0, -1);       // 右旋回(その場)
+setAction('btn-curve-left-fwd', 1, 1);    // 左斜め前
+setAction('btn-curve-right-fwd', 1, -1);   // 右斜め前
+setAction('btn-curve-left-back', -1, 1);  // 左斜め後ろ
+setAction('btn-curve-right-back', -1, -1); // 右斜め後ろ
+
 document.getElementById('btn-stop').onclick = () => { state.moving = 0; state.turning = 0; };
 
+// ボタンによるズーム
 const startZoomIn = (e) => { if(e.cancelable) e.preventDefault(); zoomState = 1; };
 const startZoomOut = (e) => { if(e.cancelable) e.preventDefault(); zoomState = -1; };
 const stopZoom = (e) => { if(e.cancelable) e.preventDefault(); zoomState = 0; };
