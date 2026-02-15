@@ -69,24 +69,21 @@
   <a-light type="ambient" color="#FFF" intensity="0.8"></a-light>
   <a-light type="directional" position="-1 2 1" intensity="0.6"></a-light>
 
-  <a-camera position="0 1.6 5" look-controls="enabled: true"></a-camera>
+  <a-camera position="0 5 15" look-controls="enabled: true"></a-camera>
 
   <a-entity id="train"
             gltf-model="models/AR-Train_Nagai.glb"
             position="0 0 0"
-            rotation="0 0 0"
-            scale="0.5 0.5 0.5">
+            rotation="0 180 0"
+            scale="5.0 5.0 5.0">
     
     <a-entity id="headlights" visible="false">
       <a-sphere radius="0.12" position="-0.186 3.7 -0.5" material="color: #ffffcc; shader: flat"></a-sphere>
       <a-cone height="15" radius-bottom="3" radius-top="0.1" position="-0.186 3.7 7.0" rotation="-90 0 0" material="color: #ffffcc; opacity: 0.2; transparent: true; shader: flat; side: double; depthWrite: false"></a-cone>
-
       <a-sphere radius="0.12" position="0.186 3.7 -0.5" material="color: #ffffcc; shader: flat"></a-sphere>
       <a-cone height="15" radius-bottom="3" radius-top="0.1" position="0.186 3.7 7.0" rotation="-90 0 0" material="color: #ffffcc; opacity: 0.2; transparent: true; shader: flat; side: double; depthWrite: false"></a-cone>
-
       <a-sphere radius="0.15" position="-1.05 1.2 -0.5" material="color: #ffffcc; shader: flat"></a-sphere>
       <a-cone height="15" radius-bottom="3" radius-top="0.1" position="-1.05 1.2 7.0" rotation="-90 0 0" material="color: #ffffcc; opacity: 0.2; transparent: true; shader: flat; side: double; depthWrite: false"></a-cone>
-
       <a-sphere radius="0.15" position="1.05 1.2 -0.5" material="color: #ffffcc; shader: flat"></a-sphere>
       <a-cone height="15" radius-bottom="3" radius-top="0.1" position="1.05 1.2 7.0" rotation="-90 0 0" material="color: #ffffcc; opacity: 0.2; transparent: true; shader: flat; side: double; depthWrite: false"></a-cone>
     </a-entity>
@@ -120,6 +117,7 @@
 </div>
 
 <script>
+/* ========== リサイズ処理 ========== */
 function onResize() {
   const scene = document.querySelector('a-scene');
   const video = document.getElementById('arjs-video');
@@ -174,18 +172,24 @@ document.getElementById('btn-light').onclick = function() {
   else this.classList.remove('btn-active');
 };
 
-/* ========== 車両操作 ========== */
+/* ========== 車両操作ロジック ========== */
 const train = document.querySelector('#train');
-let speed = 0.05;
+let speed = 0.15; 
 let turnSpeedInPlace = 2.0; 
 let turnSpeedCurve = 0.5;   
 let state = { moving: 0, turning: 0 };
+
+// ズーム制御用
+let zoomState = 0; // 1: 拡大, -1: 縮小
+let curScale = 5.0;
+const zoomSpeed = 0.05;
 
 function loop() {
   requestAnimationFrame(loop);
   if (!train.object3D) return;
   const mesh = train.object3D;
 
+  // 走行音制御
   if (state.moving !== 0) {
     if (!isRunningSoundPlaying && runAudio) {
       runAudio.play().catch(()=>{});
@@ -199,6 +203,7 @@ function loop() {
     }
   }
 
+  // 回転処理
   if (state.turning !== 0) {
     let rotationAmount = 0;
     if (state.moving !== 0) {
@@ -210,15 +215,24 @@ function loop() {
     mesh.rotation.y += rotationAmount;
   }
 
+  // 移動処理 (モデルが180度向きなので、forwardをVector3(0,0,1)に調整)
   if (state.moving !== 0) {
-    const forward = new THREE.Vector3(0, 0, -1);
+    const forward = new THREE.Vector3(0, 0, 1); 
     forward.applyQuaternion(mesh.quaternion);
     forward.normalize();
     mesh.position.addScaledVector(forward, state.moving * speed);
   }
+
+  // ズーム処理 (長押し対応)
+  if (zoomState !== 0) {
+    curScale += zoomState * zoomSpeed;
+    curScale = Math.max(0.1, curScale);
+    mesh.scale.set(curScale, curScale, curScale);
+  }
 }
 loop();
 
+/* ========== イベント登録 ========== */
 function setAction(id, moveVal, turnVal) {
   const btn = document.getElementById(id);
   if(!btn) return;
@@ -230,17 +244,38 @@ function setAction(id, moveVal, turnVal) {
   btn.addEventListener('mouseup', end);
   btn.addEventListener('mouseleave', end);
 }
+
+// 十字キー操作
 setAction('btn-fwd', 1, 0); setAction('btn-back', -1, 0);
 setAction('btn-turn-left', 0, 1); setAction('btn-turn-right', 0, -1);
 setAction('btn-curve-left-fwd', 1, 1); setAction('btn-curve-right-fwd', 1, -1);
 setAction('btn-curve-left-back', -1, 1); setAction('btn-curve-right-back', -1, -1);
 document.getElementById('btn-stop').addEventListener('click', (e)=>{ e.preventDefault(); state.moving=0; state.turning=0; });
 
-document.getElementById('btn-up').onclick = () => train.object3D.position.y += 0.1;
-document.getElementById('btn-down').onclick = () => train.object3D.position.y -= 0.1;
-let curScale = 0.5;
-document.getElementById('btn-zoom-in').onclick = () => { curScale += 0.05; train.object3D.scale.set(curScale,curScale,curScale); };
-document.getElementById('btn-zoom-out').onclick = () => { curScale = Math.max(0.1, curScale - 0.05); train.object3D.scale.set(curScale,curScale,curScale); };
+// 高さ調整 (単発クリック)
+document.getElementById('btn-up').onclick = () => train.object3D.position.y += 0.5;
+document.getElementById('btn-down').onclick = () => train.object3D.position.y -= 0.5;
+
+// 拡大・縮小 (長押し)
+const btnZoomIn = document.getElementById('btn-zoom-in');
+const btnZoomOut = document.getElementById('btn-zoom-out');
+const startZoomIn = (e) => { if(e.cancelable) e.preventDefault(); zoomState = 1; };
+const startZoomOut = (e) => { if(e.cancelable) e.preventDefault(); zoomState = -1; };
+const stopZoom = (e) => { if(e.cancelable) e.preventDefault(); zoomState = 0; };
+
+btnZoomIn.addEventListener('touchstart', startZoomIn, {passive:false});
+btnZoomIn.addEventListener('mousedown', startZoomIn);
+btnZoomIn.addEventListener('touchend', stopZoom, {passive:false});
+btnZoomIn.addEventListener('mouseup', stopZoom);
+btnZoomIn.addEventListener('mouseleave', stopZoom);
+
+btnZoomOut.addEventListener('touchstart', startZoomOut, {passive:false});
+btnZoomOut.addEventListener('mousedown', startZoomOut);
+btnZoomOut.addEventListener('touchend', stopZoom, {passive:false});
+btnZoomOut.addEventListener('mouseup', stopZoom);
+btnZoomOut.addEventListener('mouseleave', stopZoom);
+
+// キャプチャ
 document.getElementById('btn-capture').onclick = () => {
   const cvs = document.querySelector('canvas');
   cvs.toBlob(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='ar_snapshot.png'; a.click(); });
