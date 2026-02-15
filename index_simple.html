@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>AR Train SIMPLE</title>
+
+  <!-- 画面サイズに合わせる最低限の viewport -->
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+  />
+
+  <!-- ライブラリ（three.js は A-Frame 内蔵のものを使うので読み込まない） -->
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ★最小構成：マーカー＋カメラだけ -->
+  <a-scene
+    embedded
+    arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+    vr-mode-ui="enabled: false"
+  >
+    <!-- HIRO マーカーの上に列車を出す -->
+    <a-marker preset="hiro">
+      <a-entity
+        id="train"
+        gltf-model="models/AR-Train_Nagai.glb"
+        position="0 0 0"
+        rotation="0 0 0"
+        scale="0.5 0.5 0.5">
+      </a-entity>
+    </a-marker>
+
+    <!-- 通常のカメラ -->
+    <a-entity camera></a-entity>
+  </a-scene>
+
+</body>
+</html>
