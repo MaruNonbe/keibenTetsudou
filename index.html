@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>ARフラワーライナー</title>
+  <title>ARフラワーライナー - Bright Edition</title>
 
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
 
   <style>
-    /* ========== UIデザイン ========== */
+    /* UIデザインは以前のまま変更なし */
     html, body {
       margin: 0; padding: 0; width: 100%; height: 100%;
       overflow: hidden; background: #000; font-family: sans-serif;
@@ -27,7 +27,6 @@
       position: fixed; bottom: 30px; left: 0; width: 100%; z-index: 9999;
       display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none;
     }
-
     .ui-bar, .pad-grid {
       background: rgba(255, 255, 255, 0.25);
       backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: auto;
@@ -37,7 +36,6 @@
       display: grid; gap: 8px; padding: 15px; border-radius: 20px;
       grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(3, 60px);
     }
-
     .btn {
       width: 55px; height: 55px; background: #ffffff; border: none; border-radius: 12px;
       display: flex; justify-content: center; align-items: center;
@@ -46,7 +44,6 @@
     }
     .btn:active { transform: scale(0.96); background: #f5f5f5; }
     .btn-active { background: #ffffcc !important; border: 2px solid #ffcc00 !important; }
-
     .btn-icon { flex-direction: column; gap: 0px; font-size: 10px; color: #333; }
     .btn-icon span { font-size: 20px; line-height: 1.2; }
     .btn-icon div { font-weight: bold; font-size: 9px; }
@@ -59,15 +56,18 @@
   vr-mode-ui="enabled: false"
   embedded
   arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false; displayWidth: auto; displayHeight: auto;"
-  renderer="precision: mediump; antialias: true; alpha: true;"
+  renderer="precision: mediump; antialias: true; alpha: true; colorManagement: true; exposure: 1.2;"
 >
   <a-assets>
     <audio id="snd-horn" src="horn.mp3" preload="auto"></audio>
     <audio id="snd-run" src="run.mp3" preload="auto" loop></audio>
   </a-assets>
 
-  <a-light type="ambient" color="#FFF" intensity="0.8"></a-light>
-  <a-light type="directional" position="-1 2 1" intensity="0.6"></a-light>
+  <a-light type="ambient" color="#FFF" intensity="1.5"></a-light>
+  
+  <a-light type="directional" position="-1 4 2" intensity="1.0" target="#train"></a-light>
+  
+  <a-light type="hemisphere" color="#FFF" groundColor="#444" intensity="1.2"></a-light>
 
   <a-camera position="0 5 15" look-controls="enabled: true"></a-camera>
 
@@ -117,7 +117,7 @@
 </div>
 
 <script>
-/* ========== リサイズ処理 ========== */
+/* JavaScriptロジックは以前の完全版と同じ（ズーム長押し対応済み） */
 function onResize() {
   const scene = document.querySelector('a-scene');
   const video = document.getElementById('arjs-video');
@@ -130,7 +130,6 @@ function onResize() {
 window.addEventListener('load', onResize);
 window.addEventListener('resize', onResize);
 
-/* ========== 音声・ライト制御 ========== */
 const hornAudio = document.getElementById('snd-horn');
 const runAudio = document.getElementById('snd-run');
 const headlights = document.getElementById('headlights');
@@ -172,15 +171,12 @@ document.getElementById('btn-light').onclick = function() {
   else this.classList.remove('btn-active');
 };
 
-/* ========== 車両操作ロジック ========== */
 const train = document.querySelector('#train');
 let speed = 0.15; 
 let turnSpeedInPlace = 2.0; 
 let turnSpeedCurve = 0.5;   
 let state = { moving: 0, turning: 0 };
-
-// ズーム制御用
-let zoomState = 0; // 1: 拡大, -1: 縮小
+let zoomState = 0; 
 let curScale = 5.0;
 const zoomSpeed = 0.05;
 
@@ -189,7 +185,6 @@ function loop() {
   if (!train.object3D) return;
   const mesh = train.object3D;
 
-  // 走行音制御
   if (state.moving !== 0) {
     if (!isRunningSoundPlaying && runAudio) {
       runAudio.play().catch(()=>{});
@@ -203,7 +198,6 @@ function loop() {
     }
   }
 
-  // 回転処理
   if (state.turning !== 0) {
     let rotationAmount = 0;
     if (state.moving !== 0) {
@@ -215,7 +209,6 @@ function loop() {
     mesh.rotation.y += rotationAmount;
   }
 
-  // 移動処理 (モデルが180度向きなので、forwardをVector3(0,0,1)に調整)
   if (state.moving !== 0) {
     const forward = new THREE.Vector3(0, 0, 1); 
     forward.applyQuaternion(mesh.quaternion);
@@ -223,7 +216,6 @@ function loop() {
     mesh.position.addScaledVector(forward, state.moving * speed);
   }
 
-  // ズーム処理 (長押し対応)
   if (zoomState !== 0) {
     curScale += zoomState * zoomSpeed;
     curScale = Math.max(0.1, curScale);
@@ -232,7 +224,6 @@ function loop() {
 }
 loop();
 
-/* ========== イベント登録 ========== */
 function setAction(id, moveVal, turnVal) {
   const btn = document.getElementById(id);
   if(!btn) return;
@@ -244,38 +235,31 @@ function setAction(id, moveVal, turnVal) {
   btn.addEventListener('mouseup', end);
   btn.addEventListener('mouseleave', end);
 }
-
-// 十字キー操作
 setAction('btn-fwd', 1, 0); setAction('btn-back', -1, 0);
 setAction('btn-turn-left', 0, 1); setAction('btn-turn-right', 0, -1);
 setAction('btn-curve-left-fwd', 1, 1); setAction('btn-curve-right-fwd', 1, -1);
 setAction('btn-curve-left-back', -1, 1); setAction('btn-curve-right-back', -1, -1);
 document.getElementById('btn-stop').addEventListener('click', (e)=>{ e.preventDefault(); state.moving=0; state.turning=0; });
 
-// 高さ調整 (単発クリック)
 document.getElementById('btn-up').onclick = () => train.object3D.position.y += 0.5;
 document.getElementById('btn-down').onclick = () => train.object3D.position.y -= 0.5;
 
-// 拡大・縮小 (長押し)
 const btnZoomIn = document.getElementById('btn-zoom-in');
 const btnZoomOut = document.getElementById('btn-zoom-out');
 const startZoomIn = (e) => { if(e.cancelable) e.preventDefault(); zoomState = 1; };
 const startZoomOut = (e) => { if(e.cancelable) e.preventDefault(); zoomState = -1; };
 const stopZoom = (e) => { if(e.cancelable) e.preventDefault(); zoomState = 0; };
-
 btnZoomIn.addEventListener('touchstart', startZoomIn, {passive:false});
 btnZoomIn.addEventListener('mousedown', startZoomIn);
 btnZoomIn.addEventListener('touchend', stopZoom, {passive:false});
 btnZoomIn.addEventListener('mouseup', stopZoom);
 btnZoomIn.addEventListener('mouseleave', stopZoom);
-
 btnZoomOut.addEventListener('touchstart', startZoomOut, {passive:false});
 btnZoomOut.addEventListener('mousedown', startZoomOut);
 btnZoomOut.addEventListener('touchend', stopZoom, {passive:false});
 btnZoomOut.addEventListener('mouseup', stopZoom);
 btnZoomOut.addEventListener('mouseleave', stopZoom);
 
-// キャプチャ
 document.getElementById('btn-capture').onclick = () => {
   const cvs = document.querySelector('canvas');
   cvs.toBlob(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='ar_snapshot.png'; a.click(); });
