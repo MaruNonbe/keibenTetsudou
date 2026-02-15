@@ -3,59 +3,36 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>ARフラワーライナー - Bright Edition</title>
+  <title>ARフラワーライナー - Hybrid Edition</title>
 
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
 
   <style>
-    /* UIデザインは以前のまま変更なし */
-    html, body {
-      margin: 0; padding: 0; width: 100%; height: 100%;
-      overflow: hidden; background: #000; font-family: sans-serif;
-      user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
-    }
-    a-scene { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; display: block; }
-    .a-canvas, #arjs-video { width: 100% !important; height: 100% !important; object-fit: cover !important; }
-
-    #top-ui-container {
-      position: fixed; top: 20px; left: 0; width: 100%; z-index: 9999;
-      display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none;
-    }
-    #bottom-ui-container {
-      position: fixed; bottom: 30px; left: 0; width: 100%; z-index: 9999;
-      display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none;
-    }
-    .ui-bar, .pad-grid {
-      background: rgba(255, 255, 255, 0.25);
-      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: auto;
-    }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: sans-serif; }
+    #top-ui-container { position: fixed; top: 20px; left: 0; width: 100%; z-index: 9999; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+    #bottom-ui-container { position: fixed; bottom: 30px; left: 0; width: 100%; z-index: 9999; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none; }
+    .ui-bar, .pad-grid { background: rgba(255, 255, 255, 0.25); backdrop-filter: blur(8px); pointer-events: auto; }
     .ui-bar { display: flex; gap: 6px; padding: 5px 8px; border-radius: 15px; }
-    .pad-grid {
-      display: grid; gap: 8px; padding: 15px; border-radius: 20px;
-      grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(3, 60px);
-    }
-    .btn {
-      width: 55px; height: 55px; background: #ffffff; border: none; border-radius: 12px;
-      display: flex; justify-content: center; align-items: center;
-      font-size: 22px; color: #556677; box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-      cursor: pointer; -webkit-tap-highlight-color: transparent;
-    }
-    .btn:active { transform: scale(0.96); background: #f5f5f5; }
+    .pad-grid { display: grid; gap: 8px; padding: 15px; border-radius: 20px; grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(3, 60px); }
+    .btn { width: 55px; height: 55px; background: #ffffff; border: none; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 22px; color: #556677; cursor: pointer; }
     .btn-active { background: #ffffcc !important; border: 2px solid #ffcc00 !important; }
-    .btn-icon { flex-direction: column; gap: 0px; font-size: 10px; color: #333; }
-    .btn-icon span { font-size: 20px; line-height: 1.2; }
-    .btn-icon div { font-weight: bold; font-size: 9px; }
-    .btn-stop { background: #ffcccc; color: #d00; font-size: 15px; font-weight: bold; }
+    .btn-icon { flex-direction: column; font-size: 10px; color: #333; }
+    .btn-icon span { font-size: 18px; }
+    .mode-switch { background: #333 !important; color: #fff !important; font-weight: bold; width: 80px !important; }
+    .mode-gps { background: #007bff !important; }
+    #debug-info { position: fixed; bottom: 10px; left: 10px; color: white; background: rgba(0,0,0,0.5); font-size: 10px; z-index: 10000; pointer-events: none; }
   </style>
 </head>
 <body>
 
+<div id="debug-info">モード: 自由配置 (Manual)</div>
+
 <a-scene
   vr-mode-ui="enabled: false"
   embedded
-  arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false; displayWidth: auto; displayHeight: auto;"
+  arjs="sourceType: webcam; debugUIEnabled: false; videoTexture: true;"
   renderer="precision: mediump; antialias: true; alpha: true; colorManagement: true; exposure: 1.2;"
 >
   <a-assets>
@@ -64,38 +41,23 @@
   </a-assets>
 
   <a-light type="ambient" color="#FFF" intensity="1.5"></a-light>
-  
-  <a-light type="directional" position="-1 4 2" intensity="1.0" target="#train"></a-light>
-  
+  <a-light type="directional" position="-1 4 2" intensity="1.0"></a-light>
   <a-light type="hemisphere" color="#FFF" groundColor="#444" intensity="1.2"></a-light>
 
-  <a-camera position="0 5 15" look-controls="enabled: true"></a-camera>
+  <a-camera id="main-camera" rotation-reader></a-camera>
 
   <a-entity id="train"
             gltf-model="models/AR-Train_Nagai.glb"
-            position="0 0 0"
+            position="0 0 -15"
             rotation="0 180 0"
             scale="5.0 5.0 5.0">
-    
-    <a-entity id="headlights" visible="false">
-      <a-sphere radius="0.12" position="-0.186 3.7 -0.5" material="color: #ffffcc; shader: flat"></a-sphere>
-      <a-cone height="15" radius-bottom="3" radius-top="0.1" position="-0.186 3.7 7.0" rotation="-90 0 0" material="color: #ffffcc; opacity: 0.2; transparent: true; shader: flat; side: double; depthWrite: false"></a-cone>
-      <a-sphere radius="0.12" position="0.186 3.7 -0.5" material="color: #ffffcc; shader: flat"></a-sphere>
-      <a-cone height="15" radius-bottom="3" radius-top="0.1" position="0.186 3.7 7.0" rotation="-90 0 0" material="color: #ffffcc; opacity: 0.2; transparent: true; shader: flat; side: double; depthWrite: false"></a-cone>
-      <a-sphere radius="0.15" position="-1.05 1.2 -0.5" material="color: #ffffcc; shader: flat"></a-sphere>
-      <a-cone height="15" radius-bottom="3" radius-top="0.1" position="-1.05 1.2 7.0" rotation="-90 0 0" material="color: #ffffcc; opacity: 0.2; transparent: true; shader: flat; side: double; depthWrite: false"></a-cone>
-      <a-sphere radius="0.15" position="1.05 1.2 -0.5" material="color: #ffffcc; shader: flat"></a-sphere>
-      <a-cone height="15" radius-bottom="3" radius-top="0.1" position="1.05 1.2 7.0" rotation="-90 0 0" material="color: #ffffcc; opacity: 0.2; transparent: true; shader: flat; side: double; depthWrite: false"></a-cone>
     </a-entity>
-  </a-entity>
 </a-scene>
 
 <div id="top-ui-container">
   <div class="ui-bar">
-    <div class="btn btn-icon" id="btn-light"><span>💡</span><div>ﾗｲﾄ</div></div>
+    <div class="btn mode-switch" id="btn-mode">GPS OFF</div>
     <div class="btn btn-icon" id="btn-horn"><span>📢</span><div>警笛</div></div>
-    <div class="btn btn-icon" id="btn-up"><span>⬆</span><div>高</div></div>
-    <div class="btn btn-icon" id="btn-down"><span>⬇</span><div>低</div></div>
     <div class="btn btn-icon" id="btn-zoom-in"><span>🔍</span><div>+</div></div>
     <div class="btn btn-icon" id="btn-zoom-out"><span>🔍</span><div>-</div></div>
     <div class="btn btn-icon" id="btn-capture"><span>📷</span><div>撮</div></div>
@@ -117,107 +79,49 @@
 </div>
 
 <script>
-/* JavaScriptロジックは以前の完全版と同じ（ズーム長押し対応済み） */
-function onResize() {
-  const scene = document.querySelector('a-scene');
-  const video = document.getElementById('arjs-video');
-  if (scene && scene.renderer) {
-    const w = window.innerWidth; const h = window.innerHeight;
-    scene.renderer.setSize(w, h); scene.camera.aspect = w / h; scene.camera.updateProjectionMatrix();
-  }
-  if (video) { video.style.width = '100%'; video.style.height = '100%'; video.style.objectFit = 'cover'; }
-}
-window.addEventListener('load', onResize);
-window.addEventListener('resize', onResize);
-
-const hornAudio = document.getElementById('snd-horn');
-const runAudio = document.getElementById('snd-run');
-const headlights = document.getElementById('headlights');
-let isLightOn = false;
-let isRunningSoundPlaying = false;
-
-document.body.addEventListener('touchstart', function() {
-  if (hornAudio) hornAudio.load();
-  if (runAudio) runAudio.load();
-}, { once: true });
-
-const btnHorn = document.getElementById('btn-horn');
-const playHorn = (e) => {
-  if(e.cancelable) e.preventDefault();
-  if(hornAudio) {
-    hornAudio.currentTime = 0;
-    hornAudio.play().catch(()=>{});
-    btnHorn.classList.add('btn-active');
-  }
-};
-const stopHorn = (e) => {
-  if(e.cancelable) e.preventDefault();
-  if(hornAudio) {
-    hornAudio.pause();
-    hornAudio.currentTime = 0;
-    btnHorn.classList.remove('btn-active');
-  }
-};
-btnHorn.addEventListener('touchstart', playHorn, {passive:false});
-btnHorn.addEventListener('mousedown', playHorn);
-btnHorn.addEventListener('touchend', stopHorn, {passive:false});
-btnHorn.addEventListener('mouseup', stopHorn);
-btnHorn.addEventListener('mouseleave', stopHorn);
-
-document.getElementById('btn-light').onclick = function() {
-  isLightOn = !isLightOn;
-  headlights.setAttribute('visible', isLightOn);
-  if(isLightOn) this.classList.add('btn-active');
-  else this.classList.remove('btn-active');
-};
-
 const train = document.querySelector('#train');
-let speed = 0.15; 
-let turnSpeedInPlace = 2.0; 
-let turnSpeedCurve = 0.5;   
+const camera = document.querySelector('#main-camera');
+const btnMode = document.getElementById('btn-mode');
+const debug = document.getElementById('debug-info');
+
+let isGpsMode = false;
+// 長井駅の座標
+const targetLat = 38.114742; 
+const targetLon = 140.033621;
+
+btnMode.onclick = () => {
+  isGpsMode = !isGpsMode;
+  if (isGpsMode) {
+    btnMode.innerText = "GPS ON";
+    btnMode.classList.add('mode-gps');
+    debug.innerText = "モード: 長井駅GPS固定";
+    camera.setAttribute('gps-camera', 'simulateLatitude: 0; simulateLongitude: 0;');
+    train.setAttribute('gps-entity-place', `latitude: ${targetLat}; longitude: ${targetLon};`);
+    train.removeAttribute('position'); 
+  } else {
+    location.reload(); 
+  }
+};
+
 let state = { moving: 0, turning: 0 };
-let zoomState = 0; 
+let zoomState = 0;
 let curScale = 5.0;
-const zoomSpeed = 0.05;
 
 function loop() {
   requestAnimationFrame(loop);
   if (!train.object3D) return;
   const mesh = train.object3D;
 
-  if (state.moving !== 0) {
-    if (!isRunningSoundPlaying && runAudio) {
-      runAudio.play().catch(()=>{});
-      isRunningSoundPlaying = true;
-    }
-  } else {
-    if (isRunningSoundPlaying && runAudio) {
-      runAudio.pause();
-      runAudio.currentTime = 0;
-      isRunningSoundPlaying = false;
-    }
-  }
-
   if (state.turning !== 0) {
-    let rotationAmount = 0;
-    if (state.moving !== 0) {
-      rotationAmount = THREE.MathUtils.degToRad(turnSpeedCurve) * state.turning;
-      if (state.moving === -1) rotationAmount *= -1; 
-    } else {
-      rotationAmount = THREE.MathUtils.degToRad(turnSpeedInPlace) * state.turning;
-    }
-    mesh.rotation.y += rotationAmount;
+    mesh.rotation.y += THREE.MathUtils.degToRad(1.5) * state.turning;
   }
-
   if (state.moving !== 0) {
-    const forward = new THREE.Vector3(0, 0, 1); 
+    const forward = new THREE.Vector3(0, 0, 1);
     forward.applyQuaternion(mesh.quaternion);
-    forward.normalize();
-    mesh.position.addScaledVector(forward, state.moving * speed);
+    mesh.position.addScaledVector(forward, state.moving * 0.15);
   }
-
   if (zoomState !== 0) {
-    curScale += zoomState * zoomSpeed;
+    curScale += zoomState * 0.05;
     curScale = Math.max(0.1, curScale);
     mesh.scale.set(curScale, curScale, curScale);
   }
@@ -226,39 +130,28 @@ loop();
 
 function setAction(id, moveVal, turnVal) {
   const btn = document.getElementById(id);
-  if(!btn) return;
   const start = (e) => { if(e.cancelable) e.preventDefault(); state.moving = moveVal; state.turning = turnVal; };
   const end = (e) => { if(e.cancelable) e.preventDefault(); state.moving = 0; state.turning = 0; };
   btn.addEventListener('touchstart', start, {passive:false});
-  btn.addEventListener('mousedown', start);
   btn.addEventListener('touchend', end, {passive:false});
+  btn.addEventListener('mousedown', start);
   btn.addEventListener('mouseup', end);
-  btn.addEventListener('mouseleave', end);
 }
 setAction('btn-fwd', 1, 0); setAction('btn-back', -1, 0);
 setAction('btn-turn-left', 0, 1); setAction('btn-turn-right', 0, -1);
 setAction('btn-curve-left-fwd', 1, 1); setAction('btn-curve-right-fwd', 1, -1);
 setAction('btn-curve-left-back', -1, 1); setAction('btn-curve-right-back', -1, -1);
-document.getElementById('btn-stop').addEventListener('click', (e)=>{ e.preventDefault(); state.moving=0; state.turning=0; });
+document.getElementById('btn-stop').onclick = () => { state.moving = 0; state.turning = 0; };
 
-document.getElementById('btn-up').onclick = () => train.object3D.position.y += 0.5;
-document.getElementById('btn-down').onclick = () => train.object3D.position.y -= 0.5;
-
-const btnZoomIn = document.getElementById('btn-zoom-in');
-const btnZoomOut = document.getElementById('btn-zoom-out');
 const startZoomIn = (e) => { if(e.cancelable) e.preventDefault(); zoomState = 1; };
 const startZoomOut = (e) => { if(e.cancelable) e.preventDefault(); zoomState = -1; };
 const stopZoom = (e) => { if(e.cancelable) e.preventDefault(); zoomState = 0; };
-btnZoomIn.addEventListener('touchstart', startZoomIn, {passive:false});
-btnZoomIn.addEventListener('mousedown', startZoomIn);
-btnZoomIn.addEventListener('touchend', stopZoom, {passive:false});
-btnZoomIn.addEventListener('mouseup', stopZoom);
-btnZoomIn.addEventListener('mouseleave', stopZoom);
-btnZoomOut.addEventListener('touchstart', startZoomOut, {passive:false});
-btnZoomOut.addEventListener('mousedown', startZoomOut);
-btnZoomOut.addEventListener('touchend', stopZoom, {passive:false});
-btnZoomOut.addEventListener('mouseup', stopZoom);
-btnZoomOut.addEventListener('mouseleave', stopZoom);
+document.getElementById('btn-zoom-in').addEventListener('touchstart', startZoomIn, {passive:false});
+document.getElementById('btn-zoom-out').addEventListener('touchstart', startZoomOut, {passive:false});
+window.addEventListener('touchend', stopZoom);
+
+const hornAudio = document.getElementById('snd-horn');
+document.getElementById('btn-horn').onclick = () => { hornAudio.play(); };
 
 document.getElementById('btn-capture').onclick = () => {
   const cvs = document.querySelector('canvas');
